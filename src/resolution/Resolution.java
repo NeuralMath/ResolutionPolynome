@@ -648,6 +648,7 @@ class Resolution
         }
     }
 
+    /*
     void parenthesis()
     {
         fillParenthesis();
@@ -701,6 +702,7 @@ class Resolution
             }
         }
     }
+    */
 
     void updateEquation(String etape)
     {
@@ -828,7 +830,7 @@ class Resolution
 	Resolution resolution = new Resolution(equation, variables);
         
         resolution.fillTerms();
-	resolution.parenthesis();   //Pas Fini
+	//resolution.parenthesis();   //Pas Fini
 	resolution.simplify("Ordonner");
         resolution.solve();
     }
