@@ -2,19 +2,19 @@ package resolution;
 
 public class Parenthesis
 {
-    int _position;      //La position de la parenthese dans l'equation.
-    boolean _open;       //Ouverte (vrai) ou fermante (false).
+    int _position;      //La position de la parenthese.
+    String _operator;   //L'operateur devant la parenthese.
     
     Parenthesis()
     {
         _position = 0;
-        _open = true;
+        _operator = "";
     }
     
-    Parenthesis(int p, boolean o)
+    Parenthesis(int p, String o)
     {
         _position = p;
-        _open = o;
+        _operator = o;
     }
     
     int getPosition()
@@ -22,18 +22,8 @@ public class Parenthesis
         return _position;
     }
     
-    void setPosition(int p)
+    String getOperator()
     {
-        _position = p;
-    }
-    
-    boolean isOpen()
-    {
-        return _open;
-    }
-    
-    void setOpen(boolean o)
-    {
-        _open = o;
+        return _operator;
     }
 }

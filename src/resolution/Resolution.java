@@ -7,8 +7,8 @@ class Resolution
 {
     String _equation;                           //L'equation a resoudre.
     ArrayList<String> _variables;               //Les variables dans l'equation.
-    ArrayList<Parenthesis> _leftParenthesis;    //Les parentheses a gauche du egal.
-    ArrayList<Parenthesis> _rightParenthesis;    //Les parentheses a droite du egal.
+    ArrayList<Parenthesis> _openParenthesis;    //Les parentheses ouvrantes de l'equation.
+    ArrayList<Parenthesis> _closeParenthesis;   //Les parentheses fermantes de l'equation.
     ArrayList<Term> _leftTerms;                 //Les termes de l'equation a gauche du egal.
     ArrayList<Term> _rightTerms;                //Les termes de l'equation a droite du egal.
     int _equationLegthDisplay;                  //La grandeur de l'equation dans l'affichage. Sert uniquement a l'affichage.
@@ -19,8 +19,10 @@ class Resolution
     {
 	_equation = equation;
         
-        _variables = new ArrayList();
-	_variables = var;
+        _variables = new ArrayList(var);
+        
+        _openParenthesis = new ArrayList();
+        _closeParenthesis = new ArrayList();
         
         _leftTerms = new ArrayList();
         _rightTerms = new ArrayList();
@@ -82,8 +84,6 @@ class Resolution
         }
         
         fixSignOperators();
-        
-        updateEquation("Equation recue");
     }
 
     double findTermCoefficient(int pos, String s)
@@ -614,19 +614,12 @@ class Resolution
     }
     
     void fillParenthesis()
-    {
-        int pos = findCharPositionInString("(", _equation, 0), posEqual = findCharPositionInString("=", _equation, 0);
+    {        
+        int pos = findCharPositionInString("(", _equation, 0);
         
         while (pos != 0)
-        {
-            if (pos < posEqual)
-            {
-                _leftParenthesis.add(new Parenthesis(pos, true));
-            }
-            else
-            {
-                _rightParenthesis.add(new Parenthesis(pos, true));
-            }
+        {            
+            _openParenthesis.add(new Parenthesis(pos, Character.toString(_equation.charAt(pos - 2))));
             
             pos = findCharPositionInString("(", _equation, pos);
         }
@@ -635,74 +628,97 @@ class Resolution
         
         while (pos != 0)
         {
-            if (pos < posEqual)
-            {
-                _leftParenthesis.add(new Parenthesis(pos, false));
-            }
-            else
-            {
-                _rightParenthesis.add(new Parenthesis(pos, false));
-            }
+            _closeParenthesis.add(new Parenthesis(pos, ""));
             
             pos = findCharPositionInString(")", _equation, pos);
         }
     }
 
-    /*
-    void parenthesis()
+    void manageParenthesis()
     {
         fillParenthesis();
+        updateEquation("Equation recue");
+        
+        int nbrTerms = 0;
         
         //S'il y a des parentheses.
-        if (!_leftParenthesis.isEmpty() && !_rightParenthesis.isEmpty())
+        for (int i = 0; i < _openParenthesis.size(); i++)
         {
-            //Gauche du egal.
-            for (int i = 0; i < _leftParenthesis.size(); i++)
+            for (int j = 0; j < _closeParenthesis.size(); j++)
             {
-                //Si l'operateur devant la parenthese ouvrante n'est pas "*" ou "/" et si l'operateur apres la parenthese fermante n'est pas "*" ou "/".
-                if (_equation.charAt(posNextOpen - 2) != '*' && _equation.charAt(posNextOpen - 2) != '/' && _equation.charAt(posNextClose) != '*' && _equation.charAt(posNextClose) != '/')
-                {
-                    //Enleve les parentheses.
-                    _equation = _equation.substring(0, posNextOpen - 1) + _equation.substring(posNextOpen, (posNextClose - 1) - posNextOpen) + _equation.substring(posNextClose, _equation.length());
-                }
-                //Si l'operateur devant la parenthese ouvrante est "*".
-                else if (_equation.charAt(posNextOpen - 2) == '*' || _equation.charAt(posNextOpen - 2) == '/')
+                //S'il n'y a pas une autre parenthese ouvrante ou s'il y a une autre parenthese ouvrante et s'il y a une parenthese fermante entre la parenthese ouvrante et la prochaine parenthese ouvrante.
+                if (i + 1 >= _openParenthesis.size() || i + 1 < _openParenthesis.size() && _openParenthesis.get(i).getPosition() < _closeParenthesis.get(j).getPosition() && _closeParenthesis.get(j).getPosition() < _openParenthesis.get(i + 1).getPosition())
                 {
                     //Gauche du egal.
-                    for (int i = 0; i < _leftTerms.size(); i++)
+                    for (int k = 0; k < _leftTerms.size(); k++)
                     {
                         //Si le terme est compris dans les parentheses.
-                        if (posNextOpen < _leftTerms.get(i).getPosition() && _leftTerms.get(i).getPosition() < posNextClose)
-                        {
-                            nbrTerms++;
-                        }
-                    }
-                    //Droite du egal.
-                    for (int i = 0; i < _rightTerms.size(); i++)
-                    {
-                        //Si le terme est compris dans les parentheses.
-                        if (posNextOpen < _rightTerms.get(i).getPosition() && _rightTerms.get(i).getPosition() < posNextClose)
+                        if (_openParenthesis.get(i).getPosition() < _leftTerms.get(k).getPosition() && _leftTerms.get(k).getPosition() < _closeParenthesis.get(j).getPosition())
                         {
                             nbrTerms++;
                         }
                     }
 
+                    //Droite du egal.
+                    for (int k = 0; k < _rightTerms.size(); k++)
+                    {
+                        //Si le terme est compris dans les parentheses.
+                        if (_openParenthesis.get(i).getPosition() < _rightTerms.get(k).getPosition() && _rightTerms.get(k).getPosition() < _closeParenthesis.get(j).getPosition())
+                        {
+                            nbrTerms++;
+                        }
+                    }
+                }
+
+                //Si l'operateur devant la parenthese est "+".
+                if (_openParenthesis.get(i).getOperator().equals("+") || _openParenthesis.get(i).getOperator().equals("-"))
+                {
+                    _equation = _equation.substring(0, _openParenthesis.get(i).getPosition() - 1) + _equation.substring(_openParenthesis.get(i).getPosition(), (_closeParenthesis.get(i).getPosition() - 1) - _openParenthesis.get(i).getPosition()) + _equation.substring(_closeParenthesis.get(i).getPosition(), _equation.length());
+                    fillParenthesis();
+                    updateEquation("Enlever les parentheses");
+                }
+                else if (_openParenthesis.get(i).getOperator().equals("*") || _openParenthesis.get(i).getOperator().equals("/"))
+                {
                     //S'il y a plus d'un terme dans les parentheses.
                     if (nbrTerms > 1)
                     {
-                        //Enleve les parentheses.
-                        _equation = _equation.substring(0, posNextOpen - 1) + _equation.substring(posNextOpen, (posNextClose - 1) - posNextOpen) + _equation.substring(posNextClose, _equation.length());
+                        
                     }
                     else
                     {
-                        //Enleve les parentheses.
-                        _equation = _equation.substring(0, posNextOpen - 1) + _equation.substring(posNextOpen, (posNextClose - 1) - posNextOpen) + _equation.substring(posNextClose, _equation.length());
+                        _equation = _equation.substring(0, _openParenthesis.get(i).getPosition() - 1) + _equation.substring(_openParenthesis.get(i).getPosition(), (_closeParenthesis.get(i).getPosition() - 1) - _openParenthesis.get(i).getPosition()) + _equation.substring(_closeParenthesis.get(i).getPosition(), _equation.length());
+                        fillParenthesis();
+                        updateEquation("Enlever les parentheses");
                     }
                 }
             }
+
+
+            /*
+            //Si l'operateur devant la parenthese ouvrante n'est pas "*" ou "/" et si l'operateur apres la parenthese fermante n'est pas "*" ou "/".
+            if (_equation.charAt(_openParenthesis.get(i) - 2) != '*' && _equation.charAt(_openParenthesis.get(i) - 2) != '/' && _equation.charAt(_closeParenthesis.get(i)) != '*' && _equation.charAt(_closeParenthesis.get(i)) != '/')
+            {
+                //Enleve les parentheses.
+                _equation = _equation.substring(0, _openParenthesis.get(i) - 1) + _equation.substring(_openParenthesis.get(i), (_closeParenthesis.get(i) - 1) - _openParenthesis.get(i)) + _equation.substring(_closeParenthesis.get(i), _equation.length());
+            }
+            //Si l'operateur devant la parenthese ouvrante est "*".
+            else if (_equation.charAt(_openParenthesis.get(i) - 2) == '*' || _equation.charAt(_openParenthesis.get(i) - 2) == '/')
+            { 
+                //S'il y a plus d'un terme dans les parentheses.
+                if (nbrTerms > 1)
+                {
+                    //Enleve les parentheses.
+                    _equation = _equation.substring(0, _openParenthesis.get(i) - 1) + _equation.substring(_openParenthesis.get(i), (_closeParenthesis.get(i) - 1) - _openParenthesis.get(i)) + _equation.substring(_closeParenthesis.get(i), _equation.length());
+                }
+                else
+                {
+                    //Enleve les parentheses.
+                    _equation = _equation.substring(0, _openParenthesis.get(i) - 1) + _equation.substring(_openParenthesis.get(i), (_closeParenthesis.get(i) - 1) - _openParenthesis.get(i)) + _equation.substring(_closeParenthesis.get(i), _equation.length());
+                }
+            }
+            */
         }
     }
-    */
 
     void updateEquation(String etape)
     {
@@ -734,13 +750,24 @@ class Resolution
     }
 
     void displayEquation(String etape)
-    {        
+    {
         String equation = "";
+        int posEqual = findCharPositionInString("=", _equation, 0);
 
         //Gauche du egal.
         for (int i = 0; i < _leftTerms.size(); i++)
         {
-            if (i != 0)
+            for (int j = 0; j < _openParenthesis.size(); j++)
+            {
+                //Si c'est le premier terme et qu'il y a une parenthese ouvrante avant ou s'il y a une parenthese ouvrante avant le terme et apres le precedant.
+                if ((i == 0 && _openParenthesis.get(j).getPosition() < _leftTerms.get(i).getPosition())
+                        || (i > 0 && _leftTerms.get(i - 1).getPosition() < _openParenthesis.get(j).getPosition() && _openParenthesis.get(j).getPosition() < _leftTerms.get(i).getPosition()))
+                {
+                    equation += "(";
+                }
+            }
+            
+            if (i != 0 && equation.charAt(equation.length() - 1) == '(')
             {
                 equation += " " + _leftTerms.get(i).getOperator() + " ";
             }
@@ -771,6 +798,20 @@ class Resolution
             {
                 equation += _df.format(_leftTerms.get(i).getCoefficient());
             }
+            
+            for (int j = 0; j < _closeParenthesis.size(); j++)
+            {
+                //Si la parenthese est avant le egal.
+                if (j + 1 < _closeParenthesis.size() && j < posEqual)
+                {
+                    //Si c'est le dernier terme et s'il y a une parenthese fermante apres ou si c'est pas le dernier terme et s'il y a une parenthese fermante apres le terme et avant le suivant.
+                    if ((i == _leftTerms.size() - 1 && _leftTerms.get(i).getPosition() < _closeParenthesis.get(j).getPosition() && _closeParenthesis.get(j).getPosition() < posEqual)
+                            || (i > 0 && _leftTerms.get(i).getPosition() < _closeParenthesis.get(j).getPosition() && _closeParenthesis.get(j).getPosition() < _leftTerms.get(i + 1).getPosition()))
+                    {
+                        equation += ")";
+                    }
+                }
+            }
         }
 
         equation += " = ";
@@ -778,7 +819,21 @@ class Resolution
         //Droite du egal.
         for (int i = 0; i < _rightTerms.size(); i++)
         {
-            if (i != 0)
+            for (int j = 0; j < _openParenthesis.size(); j++)
+            {
+                //Si la parenthese est apres le egal.
+                if (posEqual < _openParenthesis.get(j).getPosition())
+                {
+                    //Si c'est le premier terme et qu'il y a une parenthese ouvrante avant ou s'il y a une parenthese ouvrante avant le terme et apres le precedant.
+                    if ((i == 0 && _openParenthesis.get(j).getPosition() < _rightTerms.get(i).getPosition())
+                            || (i > 0 && _rightTerms.get(i - 1).getPosition() < _openParenthesis.get(j).getPosition() && _openParenthesis.get(j).getPosition() < _rightTerms.get(i).getPosition()))
+                    {
+                        equation += " " + _openParenthesis.get(j).getOperator() + " (";
+                    }
+                }
+            }
+            
+            if (i != 0 && equation.charAt(equation.length() - 1) != '(')
             {
                 equation += " " + _rightTerms.get(i).getOperator() + " ";
             }
@@ -809,6 +864,16 @@ class Resolution
             {
                 equation += _df.format(_rightTerms.get(i).getCoefficient());
             }
+            
+            for (int j = 0; j < _closeParenthesis.size(); j++)
+            {
+                //Si c'est le dernier terme et qu'il y a une parenthese fermante apres ou s'il y a une parenthese fermante apres le terme et avant le suivant.
+                if ((i == _rightTerms.size() - 1 && _rightTerms.get(i).getPosition() < _closeParenthesis.get(j).getPosition())
+                        || (i > 0 && i != _rightTerms.size() - 1 && _rightTerms.get(i).getPosition() < _closeParenthesis.get(j).getPosition() && _closeParenthesis.get(j).getPosition() < _rightTerms.get(i + 1).getPosition()))
+                {
+                    equation += ")";
+                }
+            }
         }
 
         //Pour l'alignement.
@@ -822,7 +887,8 @@ class Resolution
     
     public static void main(String arcs[])
     {
-        String equation = "+(+4*x^0+6*x^0)=+1*x^1";
+        String equation = "+1*x^1=+5*x^0*(+4*x^0+6*x^0)";
+        //String equation = "+1*x^1=+5*x^0*(+4*x^0+6*x^0)+(+5*x^1)+(4*x^0*1*x^0)";
 
 	ArrayList<String> variables = new ArrayList();
 	variables.add("x");
@@ -830,9 +896,9 @@ class Resolution
 	Resolution resolution = new Resolution(equation, variables);
         
         resolution.fillTerms();
-	//resolution.parenthesis();   //Pas Fini
-	resolution.simplify("Ordonner");
-        resolution.solve();
+	resolution.manageParenthesis();   //Pas Fini
+	//resolution.simplify("Ordonner");
+        //resolution.solve();
     }
 }
 
